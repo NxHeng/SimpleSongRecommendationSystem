@@ -6,6 +6,7 @@ import base64
 import urllib.parse
 import os
 from dotenv import load_dotenv
+import time
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -21,6 +22,27 @@ TOKEN_URL = os.getenv("TOKEN_URL")
 
 # Scopes for Spotify Playback
 SCOPES = "streaming user-read-playback-state user-modify-playback-state app-remote-control"
+
+# Function to validate the access token
+def is_token_valid(token):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get("https://api.spotify.com/v1/me", headers=headers)
+    return response.status_code == 200
+
+# Function to refresh the access token (if you store the refresh token)
+def refresh_access_token(refresh_token):
+    auth = base64.b64encode(f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()).decode("ascii")
+    headers = {"Authorization": f"Basic {auth}"}
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    }
+    response = requests.post(TOKEN_URL, headers=headers, data=data)
+    if response.status_code == 200:
+        return response.json().get("access_token")
+    else:
+        st.error("Error refreshing access token.")
+        return None
 
 # Function to get the authorization URL
 def get_authorization_url():
@@ -98,7 +120,25 @@ def display_song_card(rec, access_token):
             # Display song name and artist
             st.markdown(f"**{rec['song_name']}**")
             st.markdown(f"{rec['artist_name']}")
-            st.markdown(f"[Listen on Spotify]({song_url})")
+            st.markdown(
+                f"""
+                <a href="{song_url}" target="_blank" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    color: black;
+                    background-color: #1DB954;
+                    border: none;
+                    border-radius: 25px;
+                    text-decoration: none;
+                    text-align: center;
+                    cursor: pointer;
+                ">
+                    🎵 Listen on Spotify
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
 
 class SongRecommendationModel:
     def __init__(self, df_with_clusters, features):
@@ -223,21 +263,43 @@ class SongRecommendationModel:
 
 # Authentication flow
 if "access_token" not in st.session_state:
-    st.title("Authorization with Spotify")
+    st.session_state.access_token = None
+
+if not st.session_state.access_token or not is_token_valid(st.session_state.access_token):
+    st.title("🎼Discover Your Next Favorite Song🎵")
 
     # Step 1: Display the Spotify login link
     auth_url = get_authorization_url()
-    st.markdown(f"[Authorize Spotify]({auth_url})")
+    st.markdown(
+                f"""
+                <a href="{auth_url}" target="_blank" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    color: black;
+                    background-color: #1DB954;
+                    border: none;
+                    border-radius: 25px;
+                    text-decoration: none;
+                    text-align: center;
+                    cursor: pointer;
+                ">
+                    🔐 Authorize Spotify
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
 
-    # Step 2: After the user logs in and provides the code, exchange it for the access token
+    # Step 2: Handle callback with code and get token
     query_params = st.query_params
     if "code" in query_params:
         auth_code = query_params["code"]
         access_token = get_access_token(auth_code)
+
         if access_token:
             st.session_state.access_token = access_token
             st.success("Successfully authenticated with Spotify!")
-            st.rerun()  # Rerun to load the recommendation section
+            st.rerun()  # Reload to continue to the recommendation section
 else:
     access_token = st.session_state.access_token
     
