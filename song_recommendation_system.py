@@ -11,8 +11,6 @@ import time
 # Load environment variables from the .env file
 load_dotenv()
 
-st.set_page_config(layout="wide")
-
 # Access the environment variables
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -261,91 +259,94 @@ class SongRecommendationModel:
         # Return only the first 6 unique overlapping songs (as dictionaries)
         return unique_overlaps[:6]
 
-# Authentication flow
-if "access_token" not in st.session_state:
-    st.session_state.access_token = None
+def run_recommendation_system():
+    # Authentication flow
+    if "access_token" not in st.session_state:
+        st.session_state.access_token = None
 
-if not st.session_state.access_token or not is_token_valid(st.session_state.access_token):
-    st.title("🎼Discover Your Next Favorite Song🎵")
+    if not st.session_state.access_token or not is_token_valid(st.session_state.access_token):
+        st.title("🎼Discover Your Next Favorite Song🎵")
+        st.write("Here display the results of the recommended songs from the Song Recommendation model.")
 
-    # Step 1: Display the Spotify login link
-    auth_url = get_authorization_url()
-    st.markdown(
-                f"""
-                <a href="{auth_url}" target="_blank" style="
-                    display: inline-block;
-                    padding: 10px 20px;
-                    font-size: 16px;
-                    color: black;
-                    background-color: #1DB954;
-                    border: none;
-                    border-radius: 25px;
-                    text-decoration: none;
-                    text-align: center;
-                    cursor: pointer;
-                ">
-                    🔐 Authorize Spotify
-                </a>
-                """,
-                unsafe_allow_html=True
-            )
+        # Step 1: Display the Spotify login link
+        auth_url = get_authorization_url()
+        st.markdown(
+                    f"""
+                    <a href="{auth_url}" target="_blank" style="
+                        display: inline-block;
+                        padding: 10px 20px;
+                        font-size: 16px;
+                        color: black;
+                        background-color: #1DB954;
+                        border: none;
+                        border-radius: 25px;
+                        text-decoration: none;
+                        text-align: center;
+                        cursor: pointer;
+                    ">
+                        🔐 Authorize Spotify
+                    </a>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-    # Step 2: Handle callback with code and get token
-    query_params = st.query_params
-    if "code" in query_params:
-        auth_code = query_params["code"]
-        access_token = get_access_token(auth_code)
+        # Step 2: Handle callback with code and get token
+        query_params = st.query_params
+        if "code" in query_params:
+            auth_code = query_params["code"]
+            access_token = get_access_token(auth_code)
 
-        if access_token:
-            st.session_state.access_token = access_token
-            st.success("Successfully authenticated with Spotify!")
-            st.rerun()  # Reload to continue to the recommendation section
-else:
-    access_token = st.session_state.access_token
-    
-    # Load the recommendation model after successful authentication
-    with open('song_recommendation_model_2.pkl', 'rb') as file:
-        recommender = pickle.load(file)
+            if access_token:
+                st.session_state.access_token = access_token
+                st.success("Successfully authenticated with Spotify!")
+                st.rerun()  # Reload to continue to the recommendation section
+    else:
+        access_token = st.session_state.access_token
+        
+        # Load the recommendation model after successful authentication
+        with open('song_recommendation_model_2.pkl', 'rb') as file:
+            recommender = pickle.load(file)
 
-    # Streamlit UI
-    st.title('🎼Discover Your Next Favorite Song🎵')
+        # Streamlit UI
+        st.title('🎼Discover Your Next Favorite Song🎵')
+        st.write("Here display the results of the recommended songs from the Song Recommendation model.")
 
-    # Search and select field
-    search_query = st.selectbox(
-        "Search for a song to get recommendations:",
-        options=[""] + [
-            f"{row['Track_Name']} - {row['Artist_Name']}" 
-            for _, row in recommender.df[['Track_Name', 'Artist_Name', 'Track_Id']].drop_duplicates().iterrows()
-        ],
-        format_func=lambda x: "Type to search" if x == "" else x,
-    )
+        # Search and select field
+        search_query = st.selectbox(
+            "Search for a song to get recommendations:",
+            options=[""] + [
+                f"{row['Track_Name']} - {row['Artist_Name']}" 
+                for _, row in recommender.df[['Track_Name', 'Artist_Name', 'Track_Id']].drop_duplicates().iterrows()
+            ],
+            format_func=lambda x: "Type to search" if x == "" else x,
+        )
 
-    if search_query and search_query != "Type to search":
-        selected_track = recommender.df[  # Get the selected song's details
-            (recommender.df['Track_Name'] + " - " + recommender.df['Artist_Name']) == search_query
-        ].iloc[0]
-        selected_track_id = selected_track['Track_Id']
-        album_id = selected_track['Album_Id']
+        if search_query and search_query != "Type to search":
+            selected_track = recommender.df[  # Get the selected song's details
+                (recommender.df['Track_Name'] + " - " + recommender.df['Artist_Name']) == search_query
+            ].iloc[0]
+            selected_track_id = selected_track['Track_Id']
+            album_id = selected_track['Album_Id']
 
-        # Recommendation button and display cards
-        if st.button('Get Recommendations'):
-            recommendations = recommender.recommend_songs(selected_track_id)
-            if isinstance(recommendations, list):
-                st.write("**Recommended Songs:**")
+            # Recommendation button and display cards
+            if st.button('Get Recommendations'):
+                recommendations = recommender.recommend_songs(selected_track_id)
+                if isinstance(recommendations, list):
+                    st.write("**Recommended Songs:**")
 
-                # First Row (3 columns for 3 cards)
-                cols = st.columns(3)  # Create 3 columns for the first row
+                    # First Row (3 columns for 3 cards)
+                    cols = st.columns(3)  # Create 3 columns for the first row
 
-                for idx, rec in enumerate(recommendations[:3]):  # First 3 songs
-                    with cols[idx]:
-                        display_song_card(rec, access_token)
+                    for idx, rec in enumerate(recommendations[:3]):  # First 3 songs
+                        with cols[idx]:
+                            display_song_card(rec, access_token)
 
-                # Second Row (2 columns for 2 cards)
-                cols = st.columns(3)  # Create 2 columns for the second row
+                    # Second Row (2 columns for 2 cards)
+                    cols = st.columns(3)  # Create 2 columns for the second row
 
-                for idx, rec in enumerate(recommendations[3:], start=3): 
-                    with cols[idx - 3]:  # Adjusting index for the second row
-                        display_song_card(rec, access_token)
+                    for idx, rec in enumerate(recommendations[3:], start=3): 
+                        with cols[idx - 3]:  # Adjusting index for the second row
+                            display_song_card(rec, access_token)
 
-            else:
-                st.write(recommendations)
+                else:
+                    st.write(recommendations)
