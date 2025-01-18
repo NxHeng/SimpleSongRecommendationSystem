@@ -4,7 +4,6 @@ from linear_regression_app import run_linear_regression_app
 st.set_page_config(page_title="Popularity Prediction", layout="wide")
 
 st.header("Linear Regression Model")
-st.write("Here, you can display the details, graphs, or predictions for your Linear Regression model.")
 run_linear_regression_app()
 
 # If you want to load and display some specific outputs (like graphs or predictions) from the LinearRegression model:
