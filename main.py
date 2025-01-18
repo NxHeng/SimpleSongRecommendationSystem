@@ -13,7 +13,6 @@ project_option = st.radio(
 # Linear Regression Project
 if project_option == "Linear Regression":
     st.header("Linear Regression Model")
-    st.write("Here, you can display the details, graphs, or predictions for your Linear Regression model.")
     run_linear_regression_app()
 
     # If you want to load and display some specific outputs (like graphs or predictions) from the LinearRegression model:
@@ -31,7 +30,6 @@ if project_option == "Linear Regression":
 # Song Recommendation Project
 elif project_option == "Song Recommendation":
     st.header("Song Recommendation Model")
-    st.write("Here, you can display the details, song recommendations, or results for your Song Recommendation model.")
     
     # If you want to load and display song recommendations or predictions:
     # Example:
